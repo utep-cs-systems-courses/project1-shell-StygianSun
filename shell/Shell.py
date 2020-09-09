@@ -11,13 +11,14 @@ def check_command(cmd):
         return True
 
 run = True
+print("Please enter a command. 'help' returns command formatting help. 'quit' exits the program.") 
 
 while run:
     cmd = input("$ ")
     if cmd == "quit":
-        print("quitting")
+        print("Quitting. Thank you!")
         sys.exit(1)
     elif cmd == "help":
-        print("help message")
+        print("\tFormat: [cmd][arg]\n\tquit: 'quit'")
     else:
         print("Fork go here")
