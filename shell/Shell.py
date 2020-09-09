@@ -21,4 +21,24 @@ while run:
     elif cmd == "help":
         print("\tFormat: [cmd][arg]\n\tquit: 'quit'")
     else:
-        print("Fork go here")
+        return_code = os.fork()
+        if return_code < 0:
+            os.write(2,("Fork failed. Returning %d\n" % return_code).encode())
+            sys.exit(1)
+        elif return_code is 0:
+            args = cmd.split()
+            for dir in re.split(":", os.environ['PATH']):
+                prog = "%s%s" % (dir,args[0])
+                os.write(1,("Child is working... Please hold...\n").encode())
+                try:
+                    os.execve(prog,args,os.environ)
+                    break
+                except FileNotFoundError:
+                    pass
+
+            os.write(1, ("Child could not execute %s\n" % args[0]).encode())
+            sys.exit(1)
+
+        else:
+            time.sleep(1)
+            print("Child is done, returning to parent")
