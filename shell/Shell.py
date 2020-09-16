@@ -2,10 +2,52 @@
 import os, sys, re, time
 
 def redirect_in(cmd):
-    print("Redirect in goes here")
+    file_index = cmd.index('<') - 1
+    file_name = cmd[file_index]
+    print(file_name)
+    cmd_index = cmd.index('<') + 1
+    args = cmd[cmd_index:]
+    print(args)
+
+    return_code = os.fork()
+    if return_code < 0:
+        os.write(2, ("Failed to fork, returning").encode())
+        sys.exit(1)
+    elif return_code == 0:
+        os.close(1)
+        sys.stdout = open(file_name,"w")
+        os.set_inheritable(1,True)
+        for dir in re.split(":", os.environ['PATH']):
+            prog = "%s/%s" % (dir, args[0])
+            try:
+                os.execve(prog, args, os.environ)
+            except FileNotFoundError:
+                pass
+        os.write(1, ("Could not run: %s\n" % args[0]).encode())
+        sys.exit(0)
 
 def redirect_out(cmd):
-    print("Redirect out goes here")
+    file_index = cmd.index('>') + 1
+    cmd_index = cmd.index('>')
+    file_name = cmd[file_index]
+    args = cmd[:cmd_index]
+    return_code = os.fork()
+    if return_code < 0:
+        os.write(2, ("Failed to fork, returning").encode())
+        sys.exit(1)
+    elif return_code == 0:
+        os.close(1)
+        sys.stdout = open(file_name,'w')
+        os.set_inhertiable(1,True)
+
+        for dir in re.split(":", os.environ['PATH']):
+            program = "%s/%s" % (dir,args[0])
+            try:
+                os.execve(prog, args, os.environ)
+            except FileNotFoundError:
+                pass
+        os.write(1, ("Could not run: %s\n" %s args[0]).encode())
+        sys.exit(0)
 
 def pipe(cmd):
     print("Pipe goes here")
@@ -25,7 +67,7 @@ def run(cmd):
         os.write(2, ("%s isn't a recognized command\n" % cmd[0]).encode())
         sys.exit(0)
         
-print("Please enter a command. 'help' returns command formatting help. 'quit' exits the shell.") 
+print("Please enter a command. 'quit' exits the shell.") 
 
 
 ##Main runtime loop
