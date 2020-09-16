@@ -1,59 +1,55 @@
 #! /usr/bin/env python3
 import os, sys, re, time
 
-def check_command(cmd):
-    command = re.findall('[#:|]', cmd)
-    if command:
-        return True
-    else:
-        return False
+def redirect_in(cmd):
+    print("Redirect in goes here")
 
+def redirect_out(cmd):
+    print("Redirect out goes here")
+
+def pipe(cmd):
+    print("Pipe goes here")
+
+def run(cmd):
+    return_code = os.fork()
+    if return_code < 0:
+        os.write(2,("Failed to fork").encode())
+        sys.exit(1)
+    elif return_code == 0:
+        for dir in re.split(":", os.environ['PATH']):
+            prog = "%s/%s" % (dir, cmd[0])
+            try:
+                os.execve(prog, cmd, os.environ)
+            except FileNotFoundError:
+                pass
+        os.write(2, ("%s isn't a recognized command\n" % cmd[0]).encode())
+        sys.exit(0)
+        
 print("Please enter a command. 'help' returns command formatting help. 'quit' exits the shell.") 
 
+
+##Main runtime loop
 while True:
-    cmd = input("$ ") ##Prompt user for command
+    print("$", end=" ")
+    if 'PS1' in os.environ:
+        os.write(1, os.environ['PS1'].encode())
+    try:
+        user_input = input()
+    except EOFError:
+        sys.exit(1)
+    except ValueError:
+        sys.exit(1)
+    cmd = user_input.split()
 
-    if check_command(cmd) == True: ##Checks users command input for pipe command
-        os.write(1,("Oh, so we're piping now? I don't think so...\n").encode())
-    elif cmd == "quit":
-        print("Quitting. Thank you!")
+    if not cmd: ##If entry is blank, prompts for user input
+        print("Please enter a command")
+    elif "quit" in cmd: ##Exits primary shell
         sys.exit(0)
-    elif cmd == "help": ##Help for command formatting
-        print("\tCommand Format: [cmd][arg]\n\tQuit: 'quit'")
-    elif cmd == 'redirect': #Redirection
-        cmd = input("$ ")
-        return_code = os.fork() #Creates a child to run the process
-        if return_code < 0: #If child fails
-            os.write(2,("Fork failed. Returning %d\n" % return_code).encode())
-            sys.exit(1)
-        elif return_code is 0: #If child succeeds
-            args = cmd.split()
-            os.close(1) ##Redirects output to output.txt
-            os.open("output.txt", os.O_WRONLY | os.O_APPEND)
-            os.set_inheritable(1, True)
-
-            for dir in re.split(":", os.environ['PATH']):
-                program = "%s/%s" % (dir, args[0])
-                try:
-                    os.execve(program,args,os.environ)
-                except FileNotFoundError:
-                    pass
-            os.write(2,("Child: Error. Could not exec %s\n" % args[1]).encode())
-            sys.exit(0)
-    else: ##If not redirecting, output goes to terminal
-        return_code = os.fork()
-        if return_code < 0:
-            os.write(2,("Fork Failed. Returning %d\n" % rc).encode())
-            sys.exit(1)
-        elif return_code == 0:
-            args = cmd.split()
-            for dir in re.split(":", os.environ['PATH']):
-                program = "%s/%s" % (dir, args[0])
-                os.write(1,("Child is attempting to exec %s\n" % args[0]).encode())
-                try:
-                    os.execve(program, args, os.environ)
-                    break
-                except FileNotFoundError:
-                    pass
-            os.write(1, ("Child reporting in: Could not exec %s\n" % args[0]).encode())
-            sys.exit(1)
+    elif "<" in cmd: ## Check for an input redirect
+        redirect_in(cmd)
+    elif ">" in cmd: ## Check for an output redirect
+        redirect_out(cmd)
+    elif "|" in cmd: ## Check for pipe command
+        pipe(cmd)
+    else: ## Runs any remaining valid command
+        run(cmd)
