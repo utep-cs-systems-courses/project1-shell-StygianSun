@@ -38,19 +38,66 @@ def redirect_out(cmd):
     elif return_code == 0:
         os.close(1)
         sys.stdout = open(file_name,'w')
-        os.set_inhertiable(1,True)
+        os.set_inheritable(1,True)
 
         for dir in re.split(":", os.environ['PATH']):
-            program = "%s/%s" % (dir,args[0])
+            prog = "%s/%s" % (dir,args[0])
             try:
                 os.execve(prog, args, os.environ)
             except FileNotFoundError:
                 pass
-        os.write(1, ("Could not run: %s\n" %s args[0]).encode())
+        os.write(1, ("Could not run: %s\n" % args[0]).encode())
         sys.exit(0)
 
 def pipe(cmd):
-    print("Pipe goes here")
+    pipe = cmd.index('|')
+    pr, pw = os.pipe()
+    for fdis in (pr, pw):
+        os.set_inheritable(fdis,True)
+
+    return_code = os.fork()
+    if return_code < 0:
+        sys.exit(1)
+    elif return_code == 0:
+        args = cmd[:pipe]
+        os.close(1)
+        fd = os.dup(pw)
+        os.set_inheritable(fd,True)
+        for x in (pr, pw):
+            os.close(x)
+        if os.path.isfile(args[0]):
+            try:
+                os.execve(args[0], args, os.environ)
+            except FileNotFoundError:
+                pass
+            else:
+                for dir in re.split(":", os.environ['PATH']):
+                    prog = "%s/%s" % (dir,args[0])
+                    try:
+                        os.execve(prog, args, os.environ)
+                    except FileNotFoundErro:
+                        pass
+                os.write(2, ("Could not run: %s\n" % args[0]).encode())
+                sys.exit(0)
+        else:
+            args = cmd[pipe + 1:]
+            os.close(0)
+            fd = os.dup(pr)
+            for fd in (pw, pr):
+                os.close(fd)
+            if os.path.isfile(args[0]):
+                try:
+                    os.execve(args[0], args, os.environ)
+                except FileNotFoundError:
+                    pass
+            else:
+                for dir in re.split(":", os.environ['PATH']):
+                    prog = "%s/%s" % (dir,args[0])
+                    try:
+                        os.execve(prog, args, os.environ)
+                    except FileNotFoundError:
+                        pass
+                os.write(2, ("%s isn't a recognized command" % args[0]).encode())
 
 def run(cmd):
     return_code = os.fork()
