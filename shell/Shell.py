@@ -115,17 +115,17 @@ def run(cmd):
         child_pid = os.wait()
 
 def input_handler(cmd):
-    if len(cmd) == 0:
+    if len(cmd) == 0: ##If cmd is empty, continue with prompt
         return
-    elif cmd[0] == "quit":
+    elif cmd[0] == "quit": ##Quit shell
         sys.exit(0)
-    elif "<" in cmd:
+    elif "<" in cmd: ##Redirect input
         redirect_in(cmd)
-    elif ">" in cmd:
+    elif ">" in cmd: ##Redirect output
         redirect_out(cmd)
-    elif "|" in cmd:
+    elif "|" in cmd: ##Pipe command
         pipe(cmd)
-    elif cmd[0] == "cd":
+    elif cmd[0] == "cd": ##Change working directory
         try:
             if len(cmd) < 2:
                 raise NoArgumentsError
@@ -139,10 +139,10 @@ def input_handler(cmd):
             os.write(2,"Too Many Arguments Entered\n".encode())
         except FileNotFoundError:
             os.write(2,("Directory/File: %s not found\n" % cmd[1].encode()))
-    else:
+    else: ##Continue with entered command
         return_code = os.fork()
         wait = True
-        if "&" in cmd:
+        if "&" in cmd: ##Check for background operations
             cmd.remove("&")
             wait = False
         if return_code < 0:
@@ -156,26 +156,22 @@ def input_handler(cmd):
                 if result[1] != 0 and result[1] != 256:
                      os.write(2,("Program terminated with exit code: %d\n"%result[1]).encode())
 
-def get_args():
+def get_args(): ##Read in command arguments from os
     args = os.read(0,128)
     return args
 
-def shell():
+def shell(): ##Shell control
     while True:
-        prompt = "$"
+        prompt = "$ "
         if "PS1" in os.environ:
             prompt = os.environ["PS1"]
         os.write(1,prompt.encode())
         cmd = get_args()
-
         if len(cmd) == 0:
             break
-
         cmd = cmd.decode().split("\n")
-
         if not cmd:
             continue
-
         for c in cmd:
             input_handler(c.split())
 
